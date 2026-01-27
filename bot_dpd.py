@@ -87,7 +87,6 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         live_options=LiveOptions(
             language=Language.HI,
             model="nova-3-general",
-            encoding="mulaw",  # Changed from linear16 for telephony audio
             sample_rate=8000,
             channels=1,
             interim_results=True,
