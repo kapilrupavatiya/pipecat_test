@@ -87,7 +87,8 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         live_options=LiveOptions(
             language=Language.HI,
             model="nova-3-general",
-            encoding="linear16",
+            encoding="mulaw",  # Changed from linear16 for telephony audio
+            sample_rate=8000,
             channels=1,
             interim_results=True,
             smart_format=True,
@@ -510,7 +511,7 @@ async def websocket_endpoint(websocket: WebSocket):
             serializer=serializer,
         )
     )
-    
+
     await run_bot(transport, handle_sigint=False)
 
 
