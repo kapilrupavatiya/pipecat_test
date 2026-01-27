@@ -51,7 +51,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from fastapi import FastAPI, WebSocket
 from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIProcessor
-from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.runner.utils import create_transport
 from deepgram import LiveOptions
@@ -78,7 +77,7 @@ logger.info("✅ All components loaded successfully!")
 load_dotenv(override=True)
 
 
-async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
+async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
     logger.info(f"Starting bot")
 
     stt = DeepgramSTTService(
@@ -453,7 +452,7 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
         logger.info(f"Client disconnected")
         await task.cancel()
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
+    runner = PipelineRunner(handle_sigint=handle_sigint)
 
     await runner.run(task)
 
@@ -507,8 +506,7 @@ async def websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    runner_args = RunnerArguments(websocket=websocket, handle_sigint=False)
-    await run_bot(transport, runner_args)
+    await run_bot(transport, handle_sigint=False)
 
 
 if __name__ == "__main__":

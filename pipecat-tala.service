@@ -1,0 +1,22 @@
+[Unit]
+Description=Pipecat Tala Voice Bot
+After=network.target
+
+[Service]
+Type=simple
+User=awaazde
+Group=awaazde
+WorkingDirectory=/home/awaazde/www/pipecat_test
+ExecStart=/home/awaazde/.local/bin/uv run bot_tala.py
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=append:/var/log/pipecat/tala.log
+StandardError=append:/var/log/pipecat/tala.log
+
+# Environment
+Environment="PATH=/home/awaazde/.local/bin:/usr/local/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target

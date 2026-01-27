@@ -71,7 +71,6 @@ from pipecat.turns.user_stop.turn_analyzer_user_turn_stop_strategy import (
     TurnAnalyzerUserTurnStopStrategy,
 )
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
-from pipecat.runner.types import RunnerArguments
 
 from awaazde_serializer import AwaazAIFrameSerializer
 
@@ -80,7 +79,7 @@ logger.info("✅ All components loaded successfully!")
 load_dotenv(override=True)
 
 
-async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
+async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
     logger.info(f"Starting bot")
 
     stt = DeepgramSTTService(
@@ -590,7 +589,7 @@ INSTRUCTION_ABOUT_VOICEMAIL: If the call goes to voicemail, mention "Parece que 
         logger.info(f"Client disconnected")
         await task.cancel()
 
-    runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
+    runner = PipelineRunner(handle_sigint=handle_sigint)
 
     await runner.run(task)
 
@@ -646,8 +645,7 @@ async def websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    runner_args = RunnerArguments(websocket=websocket, handle_sigint=False)
-    await run_bot(transport, runner_args)
+    await run_bot(transport, handle_sigint=False)
 
 
 if __name__ == "__main__":
