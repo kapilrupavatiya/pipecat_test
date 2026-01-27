@@ -503,12 +503,14 @@ async def websocket_endpoint(websocket: WebSocket):
         params=FastAPIWebsocketParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
-            add_wav_header=False,
-            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
+            add_wav_header=True,
+            vad_analyzer=SileroVADAnalyzer(sample_rate=8000),
+            vad_audio_passthrough=True,
+            audio_out_sample_rate=8000,
             serializer=serializer,
-        ),
+        )
     )
-
+    
     await run_bot(transport, handle_sigint=False)
 
 
