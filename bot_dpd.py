@@ -70,6 +70,8 @@ from pipecat.turns.user_stop.turn_analyzer_user_turn_stop_strategy import (
 )
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
+from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLatencyLogObserver
+
 from awaazde_serializer import AwaazAIFrameSerializer
 
 logger.info("✅ All components loaded successfully!")
@@ -436,6 +438,7 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
             allow_interruptions=False,
             enable_metrics=True,
             enable_usage_metrics=True,
+            observers=[UserBotLatencyLogObserver()],
         ),
         observers=[RTVIObserver(rtvi)],
     )
