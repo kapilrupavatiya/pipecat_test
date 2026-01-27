@@ -71,8 +71,6 @@ from pipecat.turns.user_stop.turn_analyzer_user_turn_stop_strategy import (
 )
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
-from pipecat_whisker import WhiskerObserver
-
 from awaazde_serializer import AwaazAIFrameSerializer
 
 logger.info("✅ All components loaded successfully!")
@@ -442,8 +440,6 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
         ),
         observers=[RTVIObserver(rtvi)],
     )
-
-    task.add_observer(WhiskerObserver(task.pipeline))
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):

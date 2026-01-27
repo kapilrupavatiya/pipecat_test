@@ -38,7 +38,6 @@ from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnal
 logger.info("✅ Local Smart Turn Analyzer V3 loaded")
 logger.info("Loading Silero VAD model...")
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat_whisker import WhiskerObserver
 
 logger.info("✅ Silero VAD model loaded")
 
@@ -578,8 +577,6 @@ INSTRUCTION_ABOUT_VOICEMAIL: If the call goes to voicemail, mention "Parece que 
         ),
         observers=[RTVIObserver(rtvi)],
     )
-
-    task.add_observer(WhiskerObserver(task.pipeline))
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
