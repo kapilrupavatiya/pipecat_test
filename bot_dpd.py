@@ -108,7 +108,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         api_key=os.getenv("GOOGLE_API_KEY"),
         model="gemini-2.0-flash",
     )
-
+    '''
     messages = [
         {
             "role": "system",
@@ -404,6 +404,13 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
 """,
         },
     ]
+    '''
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
+        },
+    ]
 
     context = LLMContext(messages)
 
@@ -433,7 +440,7 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
             llm,  # LLM
             tts,  # TTS
             transport.output(),  # Transport bot output
-            assistant_aggregator,  # Assistant spoken responses
+            #assistant_aggregator,  # Assistant spoken responses
         ]
     )
 
