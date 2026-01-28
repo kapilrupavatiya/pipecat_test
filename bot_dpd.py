@@ -91,12 +91,8 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
             sample_rate=8000,
             channels=1,
             interim_results=True,
-            # Disable these for lower latency (saves ~100-200ms)
-            smart_format=False,
-            punctuate=False,
-            # Faster endpointing - reduced from defaults
-            utterance_end_ms=500,   # Reduced from 1000
-            endpointing=300,        # Milliseconds of silence before finalizing
+            smart_format=True,
+            punctuate=True,
         ),
     )
 
