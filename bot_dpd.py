@@ -109,8 +109,6 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         model="gemini-2.0-flash",
     )
 
-    #llm = OpenAILLMService(api_key=os.getenv("OPENAI_API_KEY"))
-
     messages = [
         {
             "role": "system",
@@ -408,14 +406,21 @@ Note: The customer might not speak clear language. Handle speech-to-text errors 
     ]
 
     context = LLMContext(messages)
-    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
-        context,
-        user_params=LLMUserAggregatorParams(
-            user_turn_strategies=UserTurnStrategies(
-                stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3())]
-            ),
-        ),
-    )
+
+    # Option A: Simple VAD-based turn detection (FASTER - saves ~0.5s)
+    # Just uses silence detection, no smart analysis
+    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
+
+    # Option B: Smart turn analyzer (MORE ACCURATE but slower ~0.5s extra)
+    # Uncomment below and comment Option A to use smart detection
+    # user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
+    #     context,
+    #     user_params=LLMUserAggregatorParams(
+    #         user_turn_strategies=UserTurnStrategies(
+    #             stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3())]
+    #         ),
+    #     ),
+    # )
 
     rtvi = RTVIProcessor()
 
@@ -504,7 +509,12 @@ async def websocket_endpoint(websocket: WebSocket):
             audio_in_enabled=True,
             audio_out_enabled=True,
             add_wav_header=True,
-            vad_analyzer=SileroVADAnalyzer(sample_rate=8000),
+            vad_analyzer=SileroVADAnalyzer(
+                sample_rate=8000,
+                params=VADParams(
+                    stop_secs=0.3,  # Reduced from default 0.8 - triggers faster after silence
+                ),
+            ),
             vad_audio_passthrough=True,
             audio_out_sample_rate=8000,
             serializer=serializer,
