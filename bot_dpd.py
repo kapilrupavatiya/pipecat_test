@@ -102,6 +102,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         model="eleven_turbo_v2_5",
         params=ElevenLabsTTSService.InputParams(
             language=Language.HI,
+            optimize_streaming_latency=3,  # 0-4, higher = lower latency (3 is good balance)
         ),
     )
 
