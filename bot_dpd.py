@@ -91,15 +91,12 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
             sample_rate=8000,
             channels=1,
             interim_results=True,
-            # Disable these for lower latency (adds ~100-200ms each)
+            # Disable these for lower latency (saves ~100-200ms)
             smart_format=False,
             punctuate=False,
-            # Aggressive endpointing for faster response
-            utterance_end_ms=300,   # Reduced from 1000 - faster finalization
-            endpointing=200,        # Reduced from 300 - less silence needed
-            # Additional low-latency options
-            no_delay=True,          # Don't buffer, send results immediately
-            vad_events=True,        # Get VAD events for better turn detection
+            # Faster endpointing - reduced from defaults
+            utterance_end_ms=500,   # Reduced from 1000
+            endpointing=300,        # Milliseconds of silence before finalizing
         ),
     )
 
