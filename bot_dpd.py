@@ -93,9 +93,6 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
             interim_results=True,
             smart_format=True,
             punctuate=True,
-            # Faster endpointing - reduces wait for final transcription
-            utterance_end_ms=1000,  # Default is 1000, try 300-500 for faster response
-            endpointing=300,  # Milliseconds of silence before finalizing (default ~500-1000)
         ),
     )
 
