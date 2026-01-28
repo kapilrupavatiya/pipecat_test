@@ -93,6 +93,9 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
             interim_results=True,
             smart_format=True,
             punctuate=True,
+            # Faster endpointing - reduces wait for final transcription
+            utterance_end_ms=1000,  # Default is 1000, try 300-500 for faster response
+            endpointing=300,  # Milliseconds of silence before finalizing (default ~500-1000)
         ),
     )
 
@@ -102,21 +105,16 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         model="eleven_turbo_v2_5",
         params=ElevenLabsTTSService.InputParams(
             language=Language.HI,
-            optimize_streaming_latency=4,  # 0-4, higher = lower latency (trades quality)
         ),
     )
 
-    # Option 1: Groq - FASTEST (~0.1-0.3s TTFB)
-    llm = GroqLLMService(
-        api_key=os.getenv("GROQ_API_KEY"),
-        model="llama-3.3-70b-versatile",  # Best quality, or use "llama-3.1-8b-instant" for even faster
-    )
-
-    # Option 2: Google Gemini (~0.8-1.0s TTFB)
     # llm = GoogleLLMService(
     #     api_key=os.getenv("GOOGLE_API_KEY"),
     #     model="gemini-2.0-flash",
     # )
+
+    llm = GroqLLMService(api_key = os.getenv("GROQ_API_KEY"), model = "llama-3.3-70b-versatile",)  # Best quality, or use "llama-3.1-8b-instant" for even faster
+
     messages = [
         {
             "role": "system",
