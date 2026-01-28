@@ -91,11 +91,15 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
             sample_rate=8000,
             channels=1,
             interim_results=True,
-            smart_format=True,
-            punctuate=True,
-            # Faster endpointing - reduces wait for final transcription
-            utterance_end_ms=1000,  # Default is 1000, try 300-500 for faster response
-            endpointing=300,  # Milliseconds of silence before finalizing (default ~500-1000)
+            # Disable these for lower latency (adds ~100-200ms each)
+            smart_format=False,
+            punctuate=False,
+            # Aggressive endpointing for faster response
+            utterance_end_ms=300,   # Reduced from 1000 - faster finalization
+            endpointing=200,        # Reduced from 300 - less silence needed
+            # Additional low-latency options
+            no_delay=True,          # Don't buffer, send results immediately
+            vad_events=True,        # Get VAD events for better turn detection
         ),
     )
 
@@ -105,6 +109,7 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         model="eleven_turbo_v2_5",
         params=ElevenLabsTTSService.InputParams(
             language=Language.HI,
+            optimize_streaming_latency=4,  # 0-4, higher = lower latency (trades quality)
         ),
     )
 
