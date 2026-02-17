@@ -125,6 +125,8 @@ class NavanaSTTService(STTService):
             frame: The start frame containing initialization parameters.
         """
         await super().start(frame)
+        logger.info(f"{self}: Starting — pipeline sample_rate={self.sample_rate}Hz, "
+                     f"navana target={self._navana_sample_rate}Hz, model={self._model}")
         await self._connect()
 
     async def stop(self, frame: EndFrame):
@@ -183,12 +185,11 @@ class NavanaSTTService(STTService):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, VADUserStartedSpeakingFrame):
+            logger.debug(f"{self}: [VAD] User started speaking")
             await self.start_ttfb_metrics()
             await self.start_processing_metrics()
         elif isinstance(frame, VADUserStoppedSpeakingFrame):
-            # No explicit finalize needed for Navana — the server detects
-            # end-of-speech via silence in the audio stream.
-            pass
+            logger.debug(f"{self}: [VAD] User stopped speaking")
 
     async def _connect(self):
         """Connect to Navana Bodhi WebSocket and send config."""
@@ -276,11 +277,12 @@ class NavanaSTTService(STTService):
 
                 # Check for end-of-stream
                 if data.get("eos", False):
-                    logger.debug(f"{self}: Received end-of-stream")
+                    logger.info(f"{self}: [EOS] End of stream received")
                     continue
 
                 transcript = data.get("text", "").strip()
                 msg_type = data.get("type", "")
+                segment_id = data.get("segment_id", "")
 
                 if not transcript:
                     continue
@@ -288,6 +290,7 @@ class NavanaSTTService(STTService):
                 is_final = msg_type == "complete"
 
                 if is_final:
+                    logger.info(f"{self}: [FINAL] segment={segment_id} \"{transcript}\"")
                     await self.stop_ttfb_metrics()
                     await self.push_frame(
                         TranscriptionFrame(
@@ -299,6 +302,7 @@ class NavanaSTTService(STTService):
                     await self._handle_transcription(transcript, True)
                     await self.stop_processing_metrics()
                 elif msg_type == "partial":
+                    logger.debug(f"{self}: [PARTIAL] segment={segment_id} \"{transcript}\"")
                     await self.stop_ttfb_metrics()
                     await self.push_frame(
                         InterimTranscriptionFrame(
