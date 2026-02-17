@@ -53,8 +53,7 @@ from fastapi import FastAPI, WebSocket
 from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIProcessor
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.runner.utils import create_transport
-from deepgram import LiveOptions
-from pipecat.services.deepgram.stt import DeepgramSTTService
+from navana_stt import NavanaSTTService
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.transcriptions.language import Language
 from pipecat.services.openai.llm import OpenAILLMService
@@ -83,17 +82,12 @@ load_dotenv(override=True)
 async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
     logger.info(f"Starting bot")
 
-    stt = DeepgramSTTService(
-        api_key=os.getenv("DEEPGRAM_API_KEY"),
-        live_options=LiveOptions(
-            language=Language.HI,
-            model="nova-3-general",
-            sample_rate=8000,
-            channels=1,
-            interim_results=True,
-            smart_format=True,
-            punctuate=True,
-        ),
+    stt = NavanaSTTService(
+        api_key=os.getenv("BODHI_API_KEY"),
+        customer_id=os.getenv("BODHI_CUSTOMER_ID"),
+        model="hi-general-v2-8khz",
+        sample_rate=8000,
+        language=Language.HI,
     )
 
     tts = ElevenLabsTTSService(
@@ -106,12 +100,17 @@ async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
         ),
     )
 
-    # llm = GoogleLLMService(
-    #     api_key=os.getenv("GOOGLE_API_KEY"),
-    #     model="gemini-2.0-flash",
-    # )
+    # Gemini model options (fastest to slowest):
+    # - gemini-2.0-flash-lite (fastest, good quality)
+    # - gemini-1.5-flash-8b (very fast, smaller model)
+    # - gemini-1.5-flash (fast, better quality)
+    # - gemini-2.0-flash (fast, best quality)
+    llm = GoogleLLMService(
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        model="gemini-2.0-flash-lite",  # Fastest Gemini model
+    )
 
-    llm = GroqLLMService(api_key = os.getenv("GROQ_API_KEY"), model = "llama-3.3-70b-versatile",)  # Best quality, or use "llama-3.1-8b-instant" for even faster
+    #llm = GroqLLMService(api_key = os.getenv("GROQ_API_KEY"), model = "llama-3.3-70b-versatile",)  # Best quality, or use "llama-3.1-8b-instant" for even faster
 
     messages = [
         {
