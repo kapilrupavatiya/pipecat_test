@@ -163,6 +163,8 @@ class GenderDetectionProcessor(FrameProcessor):
             logger.info(f"Gender: {frame.gender} ({frame.confidence:.0%})")
     """
 
+    DECAY = 0.5  # each old turn's weight halves every new turn
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._cumulative_score: float = 0.0
@@ -189,7 +191,7 @@ class GenderDetectionProcessor(FrameProcessor):
 
         if isinstance(frame, TranscriptionFrame) and frame.text.strip():
             turn_score = _score_text(frame.text)
-            self._cumulative_score += turn_score
+            self._cumulative_score = self._cumulative_score * self.DECAY + turn_score
             self._turns += 1
 
             gender, confidence = _label_and_confidence(self._cumulative_score, self._turns)

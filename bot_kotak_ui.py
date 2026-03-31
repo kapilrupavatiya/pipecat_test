@@ -55,6 +55,7 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
 from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLatencyLogObserver
+from language_detection import LanguageDetectionProcessor
 
 logger.info("✅ All components loaded successfully!")
 
@@ -240,11 +241,22 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
 
     rtvi = RTVIProcessor()
 
+    language_detector = LanguageDetectionProcessor()
+
+    @language_detector.event_handler("on_language_detected")
+    async def on_language_detected(processor, frame):
+        logger.debug(
+            f"🌐 Language turn: {frame.turn_language}({frame.confidence:.0%}) | "
+            f"dominant: {frame.dominant_language}({frame.dominant_confidence:.0%}) | "
+            f"text='{frame.turn_text}'"
+        )
+
     pipeline = Pipeline(
         [
             transport.input(),
             rtvi,
             stt,
+            language_detector,
             user_aggregator,
             llm,
             tts,

@@ -67,6 +67,7 @@ from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLaten
 
 from awaazde_serializer import AwaazAIFrameSerializer
 from gender_detection import GenderDetectionProcessor
+from language_detection import LanguageDetectionProcessor
 
 logger.info("✅ All components loaded successfully!")
 
@@ -240,6 +241,16 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
 
     context = LLMContext(messages)
 
+    language_detector = LanguageDetectionProcessor()
+
+    @language_detector.event_handler("on_language_detected")
+    async def on_language_detected(processor, frame):
+        logger.debug(
+            f"🌐 Language turn: {frame.turn_language}({frame.confidence:.0%}) | "
+            f"dominant: {frame.dominant_language}({frame.dominant_confidence:.0%}) | "
+            f"text='{frame.turn_text}'"
+        )
+
     gender_detector = GenderDetectionProcessor()
     _injected_gender = None
 
@@ -294,6 +305,7 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
         [
             transport.input(),
             stt,
+            language_detector,
             gender_detector,
             user_aggregator,
             llm,
