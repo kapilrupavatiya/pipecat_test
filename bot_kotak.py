@@ -317,7 +317,7 @@ async def start_call():
     return HTMLResponse(content=content, media_type="application/xml")
 
 
-@app.websocket("/ws")
+@app.websocket("/ws/21")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     start_data = websocket.iter_text()
