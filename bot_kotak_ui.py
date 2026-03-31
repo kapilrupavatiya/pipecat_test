@@ -22,6 +22,10 @@ from loguru import logger
 print("🚀 Starting Pipecat bot (Web UI)...")
 print("⏳ Loading models and imports (20 seconds, first run only)\n")
 
+logger.info("Loading LocalSmartTurnAnalyzerV3...")
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+
+logger.info("✅ LocalSmartTurnAnalyzerV3 loaded")
 logger.info("Loading Silero VAD model...")
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 
@@ -87,6 +91,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm = GroqLLMService(
         api_key=os.getenv("GROQ_API_KEY"),
         model="llama-3.3-70b-versatile",
+        max_tokens=512,  # Voice replies are short — cap to reduce TTFB
     )
 
     messages = [
@@ -289,12 +294,24 @@ async def bot(runner_args: RunnerArguments):
         "daily": lambda: DailyParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.3)),
+            vad_analyzer=SileroVADAnalyzer(params=VADParams(
+                confidence=0.7,
+                start_secs=0.2,
+                stop_secs=0.2,
+                min_volume=0.6,
+            )),
+            turn_analyzer=LocalSmartTurnAnalyzerV3(),
         ),
         "webrtc": lambda: TransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.3)),
+            vad_analyzer=SileroVADAnalyzer(params=VADParams(
+                confidence=0.7,
+                start_secs=0.2,
+                stop_secs=0.2,
+                min_volume=0.6,
+            )),
+            turn_analyzer=LocalSmartTurnAnalyzerV3(),
         ),
     }
 
