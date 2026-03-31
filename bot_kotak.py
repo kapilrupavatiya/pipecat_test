@@ -68,6 +68,8 @@ from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLatencyLogObserver
 
 from awaazde_serializer import AwaazAIFrameSerializer
+from escalation_detection import EscalationDetectionProcessor, EscalationFrame
+from freeswitch_esl import FreeSwitchESL
 from gender_detection import GenderDetectionProcessor
 from language_detection import LanguageDetectionProcessor
 
@@ -88,8 +90,8 @@ async def _post_webhook(payload: dict) -> None:
         logger.warning(f"Webhook POST failed: {exc}")
 
 
-async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
-    logger.info("Starting bot")
+async def run_bot(transport: BaseTransport, call_uuid: str | None = None, handle_sigint: bool = False):
+    logger.info(f"Starting bot | call_uuid={call_uuid}")
 
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
@@ -264,6 +266,80 @@ Always end any closing with "Have a great day!"
             "turn_text": frame.turn_text,
         }))
 
+    # ── Escalation detector ───────────────────────────────────────────────
+    escalation_detector = EscalationDetectionProcessor()
+
+    @escalation_detector.event_handler("on_escalation_triggered")
+    async def on_escalation_triggered(processor, frame: EscalationFrame):
+        logger.warning(
+            f"🚨 Escalation triggered | reason={frame.reason} | "
+            f"turn={frame.turn_number} | frustration={frame.frustration_score} | "
+            f"text='{frame.trigger_text}'"
+        )
+
+        # 1. Log to webhook (fire-and-forget)
+        asyncio.create_task(_post_webhook({
+            "event": "escalation_triggered",
+            "reason": frame.reason,
+            "turn_number": frame.turn_number,
+            "trigger_text": frame.trigger_text,
+            "frustration_score": frame.frustration_score,
+            "transcript": frame.transcript,
+            "call_uuid": call_uuid,
+        }))
+
+        # 2. Choose appropriate handover message for the LLM
+        _reason_instructions = {
+            "explicit_request": (
+                "The caller just asked to speak with a human agent. "
+                "Warmly acknowledge their request, say you are transferring them "
+                "to a human agent right now, and wish them well. "
+                "Keep it to 1–2 sentences. Apply the language rule."
+            ),
+            "frustration": (
+                "The caller seems frustrated. Apologise briefly and say "
+                "you are connecting them to a human agent who can better assist. "
+                "Keep it to 1–2 sentences. Apply the language rule."
+            ),
+            "loop": (
+                "The conversation seems stuck. Say you understand this is taking "
+                "longer than expected and you will connect them to a human agent "
+                "for further assistance. Keep it to 1–2 sentences. Apply the language rule."
+            ),
+            "out_of_domain": (
+                "The caller's question is outside your scope. "
+                "Politely say you'll connect them to a specialist who can help, "
+                "and that you are transferring them now. "
+                "Keep it to 1–2 sentences. Apply the language rule."
+            ),
+        }
+        instruction = _reason_instructions.get(
+            frame.reason,
+            "Transfer the caller to a human agent. Say you are doing so now. "
+            "Keep it to 1 sentence. Apply the language rule.",
+        )
+
+        await escalation_detector.push_frame(
+            LLMMessagesAppendFrame(messages=[{"role": "system", "content": instruction}])
+        )
+        await task.queue_frames([LLMRunFrame()])
+
+        # 3. Bridge caller to human agent after TTS finishes speaking (~5 s)
+        async def _do_transfer():
+            await asyncio.sleep(5)
+            if call_uuid:
+                try:
+                    esl = FreeSwitchESL()
+                    result = await esl.bridge_to_agent(call_uuid)
+                    logger.info(f"FreeSWITCH bridge result: {result!r}")
+                except Exception as exc:
+                    logger.error(f"FreeSWITCH bridge failed: {exc}")
+            else:
+                logger.warning("No call_uuid available — cannot bridge to human agent")
+            await task.cancel()
+
+        asyncio.create_task(_do_transfer())
+
     gender_detector = GenderDetectionProcessor()
     _injected_gender = None
 
@@ -326,6 +402,7 @@ Always end any closing with "Have a great day!"
             transport.input(),
             stt,
             language_detector,
+            escalation_detector,
             gender_detector,
             user_aggregator,
             llm,
@@ -397,6 +474,12 @@ async def websocket_endpoint(websocket: WebSocket):
     call_data = json.loads(await start_data.__anext__())
     print(call_data, flush=True)
     stream_sid = call_data["start"]["stream_sid"]
+    # FreeSWITCH call UUID — prefer explicit call_sid if present, fall back to stream_sid
+    call_uuid = (
+        call_data["start"].get("call_sid")
+        or call_data["start"].get("uuid")
+        or stream_sid
+    )
     print("WebSocket connection accepted")
 
     serializer = AwaazAIFrameSerializer(stream_sid=stream_sid)
@@ -424,7 +507,7 @@ async def websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    await run_bot(transport, handle_sigint=False)
+    await run_bot(transport, call_uuid=call_uuid, handle_sigint=False)
 
 
 if __name__ == "__main__":
