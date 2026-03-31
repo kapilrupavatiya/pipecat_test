@@ -1,0 +1,32 @@
+{
+  "call_start": "2026-02-18T16:43:06.493697",
+  "total_turns": 2,
+  "turns": [
+    {
+      "turn_number": 1,
+      "stt_audio_path": "reports/20260218_164306/turn_01_user.wav",
+      "stt_latency_ms": 3156.428132999281,
+      "stt_output": "what is your name",
+      "stt_intermediate_outputs": "wh, what, what is you, what is your, what is your, what is your n, what is your n, what is your name, what is your name, what is your name, what is your name",
+      "nlu_input": "what is your name",
+      "nlu_latency_ms": 1166.8809229995531,
+      "nlu_output": "Haha, good question! I don't really *have* a name in the way you do. You can think of me as your friendly AI companion. Just call me whatever feels right! Friend, pal, or just \"hey you!\" works perfectly. How about you? What should I call *you*? 😄\n",
+      "tts_input": "Haha,goodquestion!Idon'treally*have*anameinthewayyoudo.YoucanthinkofmeasyourfriendlyAIcompanion.Justcallmewhateverfeelsright!Friend,pal,orjust\"heyyou!\"worksperfectly.Howaboutyou?WhatshouldIcall*you*?😄",
+      "tts_latency_ms": 3101.4698920007504,
+      "tts_audio_path": "reports/20260218_164306/turn_01_bot.wav"
+    },
+    {
+      "turn_number": 2,
+      "stt_audio_path": "reports/20260218_164306/turn_02_user.wav",
+      "stt_latency_ms": 1966.1310199990112,
+      "stt_output": "uh my name is kapil",
+      "stt_intermediate_outputs": "uh, uh my n, uh my name is, uh my name is ka, uh my name is kapil, uh my name is kapil, uh my name is kapil, uh my name is kapil",
+      "nlu_input": "uh my name is kapil",
+      "nlu_latency_ms": 1105.3805009978532,
+      "nlu_output": "Kapil! Awesome to meet you, Kapil! It's good to know your name. Now I can say, \"Hey Kapil, what's on your mind?\" Or, \"How's it going, Kapil?\" Makes things much more personal! So, Kapil, what's up? What's going on with you today? 😊\n",
+      "tts_input": "Kapil!Awesometomeetyou,Kapil!It'sgoodtoknowyourname.NowIcansay,\"HeyKapil,what'sonyourmind?\"Or,\"How'sitgoing,Kapil?\"Makesthingsmuchmorepersonal!So,Kapil,what'sup?What'sgoingonwithyoutoday?😊",
+      "tts_latency_ms": 3019.9033210010384,
+      "tts_audio_path": "reports/20260218_164306/turn_02_bot.wav"
+    }
+  ]
+}
