@@ -39,7 +39,7 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 logger.info("✅ Silero VAD model loaded")
 
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMMessagesAppendFrame, LLMRunFrame
 
 logger.info("Loading pipeline components...")
 from deepgram import LiveOptions
@@ -66,6 +66,7 @@ from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.observers.loggers.user_bot_latency_log_observer import UserBotLatencyLogObserver
 
 from awaazde_serializer import AwaazAIFrameSerializer
+from gender_detection import GenderDetectionProcessor
 
 logger.info("✅ All components loaded successfully!")
 
@@ -246,6 +247,46 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
 
     context = LLMContext(messages)
 
+    gender_detector = GenderDetectionProcessor()
+    _injected_gender = None
+
+    @gender_detector.event_handler("on_gender_detected")
+    async def on_gender_detected(processor, frame):
+        nonlocal _injected_gender
+
+        logger.debug(
+            f"👤 Gender turn: {frame.gender} ({frame.confidence:.0%}) | "
+            f"cumulative={frame.cumulative_score:+.2f} | text='{frame.turn_text}'"
+        )
+
+        # Inject into LLM context only when gender changes with sufficient confidence
+        if frame.confidence >= 0.5 and frame.gender != "unknown" and frame.gender != _injected_gender:
+            _injected_gender = frame.gender
+
+            if frame.gender == "male":
+                gender_note = (
+                    "CALLER GENDER UPDATE: The caller has been identified as MALE. "
+                    "In English, address them as 'sir'. "
+                    "In Hindi, use masculine verb/adjective forms "
+                    "(e.g., 'kar rahe hain', 'tha', 'raha hoon'). "
+                    "Never use 'madam' or feminine Hindi forms like 'rahi', 'thi'."
+                )
+            else:
+                gender_note = (
+                    "CALLER GENDER UPDATE: The caller has been identified as FEMALE. "
+                    "In English, address them as 'ma'am'. "
+                    "In Hindi, use feminine verb/adjective forms "
+                    "(e.g., 'kar rahi hain', 'thi', 'rahi hoon'). "
+                    "Never use 'sir' or masculine Hindi forms like 'raha', 'tha'."
+                )
+
+            await gender_detector.push_frame(
+                LLMMessagesAppendFrame(messages=[{"role": "system", "content": gender_note}])
+            )
+            logger.info(
+                f"👤 Gender injected into LLM: {frame.gender} ({frame.confidence:.0%})"
+            )
+
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
@@ -260,6 +301,7 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
         [
             transport.input(),
             stt,
+            gender_detector,
             user_aggregator,
             llm,
             tts,
@@ -271,7 +313,7 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
-            allow_interruptions=True,
+            allow_interruptions=False,
             enable_metrics=True,
             enable_usage_metrics=True,
             observers=[UserBotLatencyLogObserver()],
