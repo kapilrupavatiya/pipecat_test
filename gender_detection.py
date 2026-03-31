@@ -11,6 +11,7 @@ Emits a GenderDetectionFrame after each turn with the current estimate.
 """
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Literal, Optional
 
@@ -72,6 +73,16 @@ _HINDI_FEMALE_DEVA = [
 _EN_MALE = [r"\bhe\b", r"\bhim\b", r"\bhis\b", r"\bhimself\b"]
 _EN_FEMALE = [r"\bshe\b", r"\bher\b", r"\bhers\b", r"\bherself\b"]
 
+def _normalize(s: str) -> str:
+    """NFC-normalize a string so Devanagari comparisons work regardless of source encoding."""
+    return unicodedata.normalize("NFC", s)
+
+
+# Pre-normalize all Devanagari marker lists once at import time
+_HINDI_MALE_DEVA_NORM = [_normalize(m) for m in _HINDI_MALE_DEVA]
+_HINDI_FEMALE_DEVA_NORM = [_normalize(m) for m in _HINDI_FEMALE_DEVA]
+
+
 def _score_text(text: str) -> float:
     """Return a gender score for one utterance.
 
@@ -80,7 +91,8 @@ def _score_text(text: str) -> float:
     Primary signals: Hindi grammatical verb/adjective gender markers.
     Secondary signals: English pronouns.
     """
-    t_lower = text.lower()
+    text_norm = _normalize(text)
+    t_lower = text_norm.lower()
     score = 0.0
 
     # ── Romanized Hindi grammatical markers (±0.4 each) ──
@@ -92,11 +104,11 @@ def _score_text(text: str) -> float:
             score -= 0.4
 
     # ── Devanagari grammatical markers (±0.4 each) ──
-    for marker in _HINDI_MALE_DEVA:
-        if marker in text:
+    for marker in _HINDI_MALE_DEVA_NORM:
+        if marker in text_norm:
             score += 0.4
-    for marker in _HINDI_FEMALE_DEVA:
-        if marker in text:
+    for marker in _HINDI_FEMALE_DEVA_NORM:
+        if marker in text_norm:
             score -= 0.4
 
     # ── English pronouns (±0.3 each) ──
