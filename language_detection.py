@@ -178,17 +178,26 @@ def _analyze_turn(text: str) -> dict:
         reason = "fallback_latin"
 
     # ── Turn-level confidence ──
+    # Script purity is the primary signal — Devanagari is unambiguous Hindi,
+    # pure Latin is likely English. Word count adds a small bonus.
     if total_words == 0:
         confidence = 0.1
-    elif total_words == 1:
-        # Single-word response — inherently ambiguous
-        confidence = 0.3
-    elif total_words == 2:
-        confidence = 0.5
+    elif lang == "hindi" and hindi_ratio >= 0.8:
+        # Devanagari characters are unambiguous — high base even for 1 word
+        base = 0.75
+        confidence = round(min(base + (total_words - 1) * 0.05, 0.95), 2)
+    elif lang == "english" and romanized_hits == 0:
+        # Pure Latin, no Romanized Hindi — fairly clear signal
+        base = 0.60
+        confidence = round(min(base + (total_words - 1) * 0.05, 0.95), 2)
+    elif lang == "code-mixed":
+        # Mixed signals — moderate confidence, grows with length
+        base = 0.55 if total_words >= 2 else 0.45
+        confidence = round(min(base + total_words * 0.04, 0.90), 2)
     else:
-        # Multi-word: confidence scales with signal clarity
-        signal_strength = max(hindi_ratio, english_ratio, romanized_ratio)
-        confidence = round(min(0.5 + signal_strength * 0.5, 1.0), 2)
+        # Romanized Hindi detected in Latin text — moderate confidence
+        base = 0.50 if total_words >= 2 else 0.40
+        confidence = round(min(base + total_words * 0.04, 0.85), 2)
 
     return {
         "language": lang,
@@ -223,11 +232,13 @@ def _dominant_language(scores: dict[str, float], turns: int) -> tuple[LanguageLa
     if total_score == 0 or best_score == 0:
         return "other", 0.0
 
-    # Confidence = share of total signal, scaled by turns
+    # Confidence = share of total signal × turn ramp-up.
+    # raw_conf: how dominant the best language is vs. all accumulated signal.
+    # turn_factor: ramps from 0.7 (turn 1) → 1.0 (turn 5+) so we're not
+    # overconfident from a single utterance.
     raw_conf = min(best_score / max(total_score, 0.01), 1.0)
-    # Grows with more turns — less confident early on
-    turn_factor = min(turns / 3.0, 1.0)
-    conf = round(raw_conf * (0.5 + 0.5 * turn_factor), 2)
+    turn_factor = min(0.7 + (turns - 1) * 0.075, 1.0)
+    conf = round(raw_conf * turn_factor, 2)
 
     return best_lang, conf
 
@@ -271,10 +282,12 @@ class LanguageDetectionProcessor(FrameProcessor):
     # Higher decay → slower dominant-language updates, more stable output.
     DECAY = 0.7
 
-    # Score added per turn for each classification
+    # Score added per turn for each language bucket.
+    # Pure hindi/english turns don't credit code-mixed — that was causing
+    # code-mixed to accumulate score on every turn and dilute dominant confidence.
     _TURN_WEIGHTS: dict[str, dict[str, float]] = {
-        "hindi":      {"hindi": 1.0, "english": 0.0, "code-mixed": 0.3, "other": 0.0},
-        "english":    {"hindi": 0.0, "english": 1.0, "code-mixed": 0.3, "other": 0.0},
+        "hindi":      {"hindi": 1.0, "english": 0.0, "code-mixed": 0.0, "other": 0.0},
+        "english":    {"hindi": 0.0, "english": 1.0, "code-mixed": 0.0, "other": 0.0},
         "code-mixed": {"hindi": 0.4, "english": 0.4, "code-mixed": 1.0, "other": 0.0},
         "other":      {"hindi": 0.0, "english": 0.0, "code-mixed": 0.0, "other": 0.1},
     }

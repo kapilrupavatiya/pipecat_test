@@ -16,9 +16,11 @@ Run the bot using::
     uv run bot_kotak.py
 """
 
+import asyncio
 import json
 import os
 
+import aiohttp
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket
@@ -72,6 +74,18 @@ from language_detection import LanguageDetectionProcessor
 logger.info("✅ All components loaded successfully!")
 
 load_dotenv(override=True)
+
+_WEBHOOK_URL = "https://webhook.site/34bbfede-7078-4d89-8a3b-3075b0e23ece"
+
+
+async def _post_webhook(payload: dict) -> None:
+    """Fire-and-forget POST to the webhook. Errors are logged but never raise."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(_WEBHOOK_URL, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                logger.debug(f"Webhook POST → {resp.status} | payload={payload}")
+    except Exception as exc:
+        logger.warning(f"Webhook POST failed: {exc}")
 
 
 async def run_bot(transport: BaseTransport, handle_sigint: bool = False):
@@ -250,6 +264,17 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
             f"dominant: {frame.dominant_language}({frame.dominant_confidence:.0%}) | "
             f"text='{frame.turn_text}'"
         )
+        asyncio.create_task(_post_webhook({
+            "event": "language_detected",
+            "turn_language": frame.turn_language,
+            "turn_confidence": round(frame.confidence, 2),
+            "dominant_language": frame.dominant_language,
+            "dominant_confidence": round(frame.dominant_confidence, 2),
+            "hindi_ratio": frame.hindi_ratio,
+            "english_ratio": frame.english_ratio,
+            "romanized_hits": frame.romanized_hits,
+            "turn_text": frame.turn_text,
+        }))
 
     gender_detector = GenderDetectionProcessor()
     _injected_gender = None
@@ -262,6 +287,13 @@ MTF Calculator: https://www.kotaksecurities.com/calculator/mtf-calculator/
             f"👤 Gender turn: {frame.gender} ({frame.confidence:.0%}) | "
             f"cumulative={frame.cumulative_score:+.2f} | text='{frame.turn_text}'"
         )
+        asyncio.create_task(_post_webhook({
+            "event": "gender_detected",
+            "gender": frame.gender,
+            "confidence": round(frame.confidence, 2),
+            "cumulative_score": round(frame.cumulative_score, 3),
+            "turn_text": frame.turn_text,
+        }))
 
         # Inject into LLM context only when gender changes with sufficient confidence
         if frame.confidence >= 0.5 and frame.gender != "unknown" and frame.gender != _injected_gender:
