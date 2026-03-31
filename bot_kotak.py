@@ -326,7 +326,7 @@ Always end any closing with "Have a great day!"
 
         # 3. Bridge caller to human agent after TTS finishes speaking (~5 s)
         async def _do_transfer():
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
             if call_uuid:
                 try:
                     esl = FreeSwitchESL()
