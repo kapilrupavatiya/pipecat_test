@@ -162,7 +162,7 @@ class FreeSwitchESL:
 
         # Prefix with 'user/' if destination looks like a plain extension
         if not dest.startswith("user/") and not dest.startswith("sofia/") and not dest.startswith("{"):
-            dest = f"user/{dest}"
+            dest = f"sofia/gateway/tata/0{dest}"
 
-        cmd = f"originate {{origination_caller_id_number={cid}}}{dest} &bridge({caller_uuid})"
+        cmd = f"originate {{}}{dest} &bridge({caller_uuid})"
         return await self._run(cmd)
