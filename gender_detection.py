@@ -34,91 +34,78 @@ class GenderDetectionFrame(Frame):
 
 # ── Signal tables ──────────────────────────────────────────────────────────
 
-# Hindi masculine verb/adjective endings (raha, tha, aaya, gaya, …)
-_HINDI_MALE = [
+# Romanized Hindi masculine verb/adjective endings
+_HINDI_MALE_ROMAN = [
     r"\bkr?\s*raha\b", r"\bkar\s*raha\b",
-    r"\bho\s*raha\b", r"\btha\b", r"\btha\s*main\b",
+    r"\bho\s*raha\b", r"\btha\b",
     r"\bgaya\b", r"\baaya\b", r"\bbola\b", r"\bsota\b",
     r"\bkhaya\b", r"\bpiya\b", r"\bbaitha\b",
-    r"\bmain\s+\w+\s*tha\b",
-    r"\bpita\b", r"\bbeta\b", r"\bbhai\b", r"\bsir\b",
-    r"\buncle\b",
+    r"\bpita\b", r"\bbeta\b", r"\bbhai\b", r"\buncle\b",
 ]
 
-# Hindi feminine verb/adjective endings (rahi, thi, aayi, gayi, …)
-_HINDI_FEMALE = [
+# Romanized Hindi feminine verb/adjective endings
+_HINDI_FEMALE_ROMAN = [
     r"\bkr?\s*rahi\b", r"\bkar\s*rahi\b",
     r"\bho\s*rahi\b", r"\bthi\b",
     r"\bgayi\b", r"\baayi\b", r"\bboli\b", r"\bsoti\b",
-    r"\bkhayi\b", r"\bpiyi\b", r"\bbaithi\b",
-    r"\bmain\s+\w+\s*thi\b",
+    r"\bkhayi\b", r"\bbaithi\b",
     r"\bmata\b", r"\bbeti\b", r"\bdidi\b", r"\bmadam\b",
     r"\bauntie\b", r"\bbehan\b", r"\bbehen\b",
+]
+
+# Devanagari masculine markers (रहा, था, गया, आया, बोला, भाई, पिता, बेटा)
+_HINDI_MALE_DEVA = [
+    "रहा", "रहा हूं", "रहा हूँ", "रहा है", "रहे हैं",
+    "था", "गया", "आया", "बोला", "सोया", "खाया", "बैठा",
+    "भाई", "भैया", "पिता", "बेटा", "चाचा", "मामा",
+]
+
+# Devanagari feminine markers (रही, थी, गई, आई, बोली, दीदी, माता, बेटी)
+_HINDI_FEMALE_DEVA = [
+    "रही", "रही हूं", "रही हूँ", "रही है", "रही हैं",
+    "थी", "गई", "आई", "बोली", "सोई", "खाई", "बैठी",
+    "दीदी", "माता", "बेटी", "चाची", "मामी", "बहन",
+    "मैडम", "महिला", "औरत", "लड़की",
 ]
 
 # English pronouns
 _EN_MALE = [r"\bhe\b", r"\bhim\b", r"\bhis\b", r"\bhimself\b"]
 _EN_FEMALE = [r"\bshe\b", r"\bher\b", r"\bhers\b", r"\bherself\b"]
 
-# Common Indian first names (not exhaustive, but covers frequent ones)
-_MALE_NAMES = {
-    "rahul", "rohan", "raj", "rajesh", "amit", "arun", "arjun", "aman",
-    "ankur", "ankit", "anil", "ajay", "akash", "akhil", "ashish", "ashok",
-    "deepak", "dhruv", "gaurav", "harsh", "hemant", "ishan", "jay",
-    "karan", "kartik", "kunal", "manoj", "mohit", "mukesh", "naveen",
-    "neil", "nikhil", "nilesh", "pankaj", "prateek", "praveen", "puneet",
-    "rajan", "rakesh", "ramesh", "ravi", "ritesh", "rohit", "sachin",
-    "sahil", "sanjay", "sanjeev", "shubham", "siddharth", "sunil", "suresh",
-    "tarun", "tushar", "varun", "vijay", "vikram", "vinay", "vishal",
-    "vivek", "yash", "yogesh",
-}
-_FEMALE_NAMES = {
-    "aditi", "aishwarya", "akanksha", "alka", "ananya", "anuradha",
-    "aparna", "archana", "arjita", "astha", "bhavna", "deepa", "deepika",
-    "divya", "ekta", "garima", "geeta", "harpreet", "heena", "ishika",
-    "jyoti", "kajal", "kamya", "kavita", "khushi", "kirti", "komal",
-    "kritika", "lata", "madhuri", "manisha", "megha", "meera", "monika",
-    "naina", "namrata", "neha", "nidhi", "nisha", "palak", "poonam",
-    "pooja", "prachi", "pragya", "priya", "priyanka", "radha", "rashmi",
-    "rashi", "rekha", "renu", "rhea", "richa", "ritu", "riya", "rupal",
-    "sakshi", "saloni", "sangeeta", "sapna", "seema", "shilpa", "shruti",
-    "simran", "sneha", "sonam", "sonia", "srishti", "sunita", "swati",
-    "tanvi", "tanya", "trisha", "usha", "varsha", "vidya", "vineeta",
-}
-
-
 def _score_text(text: str) -> float:
     """Return a gender score for one utterance.
 
     Positive → male evidence, negative → female evidence.
+    Handles both Devanagari (Deepgram language=hi output) and Romanized Latin.
+    Primary signals: Hindi grammatical verb/adjective gender markers.
+    Secondary signals: English pronouns.
     """
-    t = text.lower()
+    t_lower = text.lower()
     score = 0.0
 
-    # Hindi grammatical markers (strong signal, ±0.4 each)
-    for pat in _HINDI_MALE:
-        if re.search(pat, t):
+    # ── Romanized Hindi grammatical markers (±0.4 each) ──
+    for pat in _HINDI_MALE_ROMAN:
+        if re.search(pat, t_lower):
             score += 0.4
-    for pat in _HINDI_FEMALE:
-        if re.search(pat, t):
+    for pat in _HINDI_FEMALE_ROMAN:
+        if re.search(pat, t_lower):
             score -= 0.4
 
-    # English pronouns (moderate, ±0.3)
+    # ── Devanagari grammatical markers (±0.4 each) ──
+    for marker in _HINDI_MALE_DEVA:
+        if marker in text:
+            score += 0.4
+    for marker in _HINDI_FEMALE_DEVA:
+        if marker in text:
+            score -= 0.4
+
+    # ── English pronouns (±0.3 each) ──
     for pat in _EN_MALE:
-        if re.search(pat, t):
+        if re.search(pat, t_lower):
             score += 0.3
     for pat in _EN_FEMALE:
-        if re.search(pat, t):
+        if re.search(pat, t_lower):
             score -= 0.3
-
-    # Name detection (strong signal, ±0.6 — cap at one per utterance)
-    words = re.findall(r"\b[a-z]+\b", t)
-    male_name_hit = any(w in _MALE_NAMES for w in words)
-    female_name_hit = any(w in _FEMALE_NAMES for w in words)
-    if male_name_hit and not female_name_hit:
-        score += 0.6
-    elif female_name_hit and not male_name_hit:
-        score -= 0.6
 
     return score
 
